@@ -67,11 +67,11 @@ function aiMarkup(answer){
       text.append(h);
     }else{
       const p=document.createElement('p');
-      const parts = clean.split(/(\*\*[^*]+\*\*)/g);
+      const parts = clean.split(/(\*{2,3}[\s\S]+?\*{2,3})/g);
 for (const part of parts) {
-  if (part.startsWith('**') && part.endsWith('**')) {
+  if (/^\*{2,3}[\s\S]+?\*{2,3}$/.test(part)) {
     const strong = document.createElement('strong');
-    strong.textContent = part.slice(2, -2);
+    strong.textContent = part.replace(/^\*{2,3}|\*{2,3}$/g, '');
     p.appendChild(strong);
   } else {
     p.appendChild(document.createTextNode(part));
