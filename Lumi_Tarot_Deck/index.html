@@ -67,7 +67,16 @@ function aiMarkup(answer){
       text.append(h);
     }else{
       const p=document.createElement('p');
-      p.textContent=clean;
+      const parts = clean.split(/(\*\*[^*]+\*\*)/g);
+for (const part of parts) {
+  if (part.startsWith('**') && part.endsWith('**')) {
+    const strong = document.createElement('strong');
+    strong.textContent = part.slice(2, -2);
+    p.appendChild(strong);
+  } else {
+    p.appendChild(document.createTextNode(part));
+  }
+}
       p.style.margin='0 0 12px';
       text.append(p);
     }
