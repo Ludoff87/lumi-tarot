@@ -28,7 +28,55 @@ function pick(i){if(chosen.length>=needed)return;let c=remaining.splice(i,1)[0];
 function historySave(h){try{localStorage.setItem('lumiHistory',JSON.stringify(h.slice(0,30)))}catch(e){}}
 function cardMarkup(list){return list.map(c=>`<div class="tarot selected"><img src="cards/${String(c.id).padStart(2,'0')}.webp" alt="${escapeHTML(c.name)}"><div class="card-caption">${escapeHTML(c.name)}</div></div>`).join('')}
 function basicInterpretation(list,pos){return list.map((c,i)=>`<article class="result"><div class="tag">${escapeHTML(pos[i]||'Карта')} · ${c.reversed?'Перевёрнутая':'Прямая'} карта</div><h3>${escapeHTML(c.name)}</h3><p>${escapeHTML(c.reversed?'Возможно, энергия этой карты сейчас проявляется неявно. Не торопись: '+c.meaning.toLowerCase():c.meaning)}</p></article>`).join('')+'<div class="result"><h3>✨ Общий совет</h3><p>Рассмотри эти образы как разные стороны своей ситуации. Что откликается тебе сильнее всего? Какие небольшие действия ты можешь предпринять уже сейчас?</p></div>'}
-function aiMarkup(answer){const article=document.createElement('article');article.className='result';const heading=document.createElement('h3');heading.textContent='✨ Толкование GigaChat';const text=document.createElement('p');text.style.whiteSpace='pre-line';text.textContent=answer;article.append(heading,text);return article}
+
+function aiMarkup(answer){
+  const article=document.createElement('article');
+  article.className='result';
+
+  const heading=document.createElement('h3');
+  heading.textContent='✨ Толкование GigaChat';
+  article.append(heading);
+
+  const sections=[
+    'Ответ на твой вопрос',
+    'Что говорят карты',
+    'Общий вывод',
+    'Совет карт'
+  ];
+
+  const lines=String(answer||'').split('\n');
+  const text=document.createElement('div');
+  text.style.whiteSpace='normal';
+  text.style.lineHeight='1.65';
+
+  for(const line of lines){
+    const clean=line.trim();
+    if(!clean)continue;
+
+    const title=clean.replace(/^#{1,6}\s*/,'')
+                     .replace(/\*\*/g,'')
+                     .replace(/[:：]\s*$/,'').trim();
+
+    if(sections.includes(title)){
+      const h=document.createElement('h4');
+      h.textContent=title;
+      h.style.color='#ffe3a0';
+      h.style.fontWeight='700';
+      h.style.fontSize='1.12em';
+      h.style.margin='20px 0 8px';
+      text.append(h);
+    }else{
+      const p=document.createElement('p');
+      p.textContent=clean;
+      p.style.margin='0 0 12px';
+      text.append(p);
+    }
+  }
+
+  article.append(text);
+  return article;
+}
+
 let currentReadingId=null;
 async function finish(){const q=$('question').value.trim(),pos=positions();const readingMode=mode;const readingCards=chosen.map(c=>({...c}));const id='reading-'+Date.now()+'-'+Math.random().toString(36).slice(2,9);currentReadingId=id;
 $('asked').textContent=q?'Твой вопрос: '+q:'';$('resultCards').innerHTML=cardMarkup(readingCards);$('interpretations').innerHTML=basicInterpretation(readingCards,pos);show('results');
