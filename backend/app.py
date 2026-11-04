@@ -1,5 +1,5 @@
 
-"""Lumi Tarot API — GigaChat connection diagnostics."""
+"""Lumi Tarot API — secure GigaChat connection."""
 
 import hmac
 import json
@@ -9,6 +9,7 @@ import ssl
 import time
 import uuid
 
+from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
@@ -21,9 +22,25 @@ app = Flask(__name__)
 _TOKEN = None
 _TOKEN_EXPIRES_AT = 0
 
+CERT_FILE = Path(__file__).resolve().parent / "lumi_gigachat_ca_bundle.pem"
+
+
+def _ssl_context():
+    """Keep standard trusted CAs and add the project CA bundle."""
+    context = ssl.create_default_context()
+
+    if not CERT_FILE.is_file():
+        raise RuntimeError("GigaChat CA bundle file is missing")
+
+    try:
+        context.load_verify_locations(cafile=str(CERT_FILE))
+    except (ssl.SSLError, OSError):
+        raise RuntimeError("GigaChat CA bundle could not be loaded") from None
+
+    return context
+
 
 def _network_error_category(exc):
-    """Return a safe diagnostic category without secrets."""
     reason = exc.reason if isinstance(exc, URLError) else exc
 
     if isinstance(reason, ssl.SSLCertVerificationError):
@@ -66,7 +83,11 @@ def _json_request(url, payload, headers, timeout=15):
     )
 
     try:
-        with urlopen(req, timeout=timeout) as response:
+        with urlopen(
+            req,
+            timeout=timeout,
+            context=_ssl_context(),
+        ) as response:
             return json.load(response)
 
     except HTTPError as exc:
@@ -117,7 +138,11 @@ def _get_access_token():
     )
 
     try:
-        with urlopen(req, timeout=15) as response:
+        with urlopen(
+            req,
+            timeout=15,
+            context=_ssl_context(),
+        ) as response:
             result = json.load(response)
 
     except HTTPError as exc:
@@ -154,7 +179,7 @@ def home():
     return jsonify(
         service="Lumi Tarot API",
         status="running",
-        version="0.4",
+        version="0.5",
     )
 
 
@@ -245,7 +270,6 @@ def private_test():
         TypeError,
         ValueError,
     ) as exc:
-        # Log only predefined diagnostic messages.
         message = str(exc)
 
         app.logger.warning(
@@ -259,9 +283,8 @@ def private_test():
         ), 502
 
 
-# Public AI access remains disabled.
-# Telegram authentication, quotas and abuse
-# protection are required before public launch.
+# Public AI access remains disabled until Telegram
+# authentication, quotas and abuse protection are ready.
 
 if __name__ == "__main__":
     app.run(
