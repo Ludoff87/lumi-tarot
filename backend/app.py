@@ -52,9 +52,11 @@ def _get_access_token():
         with urlopen(req, timeout=15) as response:
             result = json.load(response)
     except HTTPError as exc:
-        raise RuntimeError(f"GigaChat OAuth HTTP {exc.code}") from exc
-    except (URLError, TimeoutError) as exc:
-        raise RuntimeError("GigaChat OAuth connection failed") from exc
+    raise RuntimeError(f"GigaChat OAuth HTTP {exc.code}") from exc
+except (URLError, TimeoutError) as exc:
+    raise RuntimeError(
+        f"GigaChat OAuth connection failed: {type(exc).__name__}"
+    ) from exc
     _TOKEN = result.get("access_token")
     if not _TOKEN:
         raise RuntimeError("GigaChat OAuth did not return an access token")
@@ -105,7 +107,10 @@ def private_test():
         answer = result["choices"][0]["message"]["content"]
         return jsonify(ok=True, answer=answer)
     except (RuntimeError, KeyError, IndexError, TypeError, ValueError) as exc:
-        app.logger.warning("Private GigaChat test failed: %s", type(exc).__name__)
+       app.logger.warning(
+    "Private GigaChat test failed: %s",
+    str(exc)
+)
         return jsonify(ok=False, error=str(exc)), 502
 
 
