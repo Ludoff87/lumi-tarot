@@ -1,9 +1,11 @@
 
-"""Lumi Tarot API — private GigaChat connectivity test."""
+"""Lumi Tarot API — GigaChat connection diagnostics."""
 
 import hmac
 import json
 import os
+import socket
+import ssl
 import time
 import uuid
 
@@ -18,6 +20,37 @@ app = Flask(__name__)
 
 _TOKEN = None
 _TOKEN_EXPIRES_AT = 0
+
+
+def _network_error_category(exc):
+    """Return a safe diagnostic category without secrets."""
+    reason = exc.reason if isinstance(exc, URLError) else exc
+
+    if isinstance(reason, ssl.SSLCertVerificationError):
+        return "SSL_CERTIFICATE_VERIFY_FAILED"
+
+    if isinstance(reason, ssl.SSLError):
+        return "SSL_HANDSHAKE_ERROR"
+
+    if isinstance(reason, socket.gaierror):
+        return "DNS_RESOLUTION_FAILED"
+
+    if isinstance(reason, (TimeoutError, socket.timeout)):
+        return "CONNECTION_TIMEOUT"
+
+    if isinstance(reason, ConnectionRefusedError):
+        return "CONNECTION_REFUSED"
+
+    if isinstance(reason, ConnectionResetError):
+        return "CONNECTION_RESET"
+
+    if isinstance(reason, OSError):
+        if reason.errno == 101:
+            return "NETWORK_UNREACHABLE"
+        if reason.errno == 113:
+            return "HOST_UNREACHABLE"
+
+    return "NETWORK_ERROR"
 
 
 def _json_request(url, payload, headers, timeout=15):
@@ -38,13 +71,14 @@ def _json_request(url, payload, headers, timeout=15):
 
     except HTTPError as exc:
         raise RuntimeError(
-            f"GigaChat upstream HTTP {exc.code}"
-        ) from exc
+            f"GigaChat API HTTP {exc.code}"
+        ) from None
 
     except (URLError, TimeoutError) as exc:
         raise RuntimeError(
-            f"GigaChat network connection failed: {type(exc).__name__}"
-        ) from exc
+            "GigaChat API connection failed: "
+            + _network_error_category(exc)
+        ) from None
 
 
 def _get_access_token():
@@ -89,12 +123,13 @@ def _get_access_token():
     except HTTPError as exc:
         raise RuntimeError(
             f"GigaChat OAuth HTTP {exc.code}"
-        ) from exc
+        ) from None
 
     except (URLError, TimeoutError) as exc:
         raise RuntimeError(
-            f"GigaChat OAuth connection failed: {type(exc).__name__}"
-        ) from exc
+            "GigaChat OAuth connection failed: "
+            + _network_error_category(exc)
+        ) from None
 
     _TOKEN = result.get("access_token")
 
@@ -119,7 +154,7 @@ def home():
     return jsonify(
         service="Lumi Tarot API",
         status="running",
-        version="0.3",
+        version="0.4",
     )
 
 
@@ -143,7 +178,6 @@ def gigachat_status():
 
 @app.post("/internal/test-gigachat")
 def private_test():
-
     expected = os.environ.get(
         "LUMI_ADMIN_TEST_TOKEN", ""
     )
@@ -211,26 +245,26 @@ def private_test():
         TypeError,
         ValueError,
     ) as exc:
+        # Log only predefined diagnostic messages.
+        message = str(exc)
 
         app.logger.warning(
             "Private GigaChat test failed: %s",
-            str(exc),
+            message,
         )
 
         return jsonify(
             ok=False,
-            error=str(exc),
+            error=message,
         ), 502
 
 
-# Public AI access is disabled until Telegram
-# authentication, usage limits and abuse protection
-# are implemented.
+# Public AI access remains disabled.
+# Telegram authentication, quotas and abuse
+# protection are required before public launch.
 
 if __name__ == "__main__":
     app.run(
         host="0.0.0.0",
-        port=int(
-            os.environ.get("PORT", "10000")
-        ),
+        port=int(os.environ.get("PORT", "10000")),
     )
