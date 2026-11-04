@@ -250,7 +250,7 @@ def ai_reading():
             return jsonify(ok=False, error="Дождись завершения предыдущего расклада"), 429
         if mode == "day" and state["day_used"] >= 2:
             return jsonify(ok=False, error="Лимит карт дня исчерпан"), 429
-        if mode != "day" and state["welcome_used"] >= 5:
+        if mode != "day" and state["welcome_used"] >= 20:
             return jsonify(ok=False, error="Лимит приветственных раскладов исчерпан"), 429
         state["pending"] = True
 
