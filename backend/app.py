@@ -314,14 +314,14 @@ def ai_reading():
         if not isinstance(answer, str) or not answer.strip():
             raise ValueError("Empty AI response")
         success = True
-        return jsonify(ok=True, answer=answer.strip())
-      except (RuntimeError, ValueError, KeyError, IndexError, TypeError) as exc:
+        return jsonify(ok=True, answer=answer.strip()) 
+   except (RuntimeError, ValueError, KeyError, IndexError, TypeError) as exc:
         app.logger.warning(
             "Public reading failed; error_type=%s",
             type(exc).__name__
         )
         return jsonify(ok=False, error="GigaChat временно недоступен. Попробуй позже"), 502
-           finally:
+    finally:
         with _QUOTA_LOCK:
             state = _QUOTA[user_id]
             state["pending"] = False
