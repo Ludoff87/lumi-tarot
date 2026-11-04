@@ -40,7 +40,7 @@ $('asked').textContent=entry.question?'Твой вопрос: '+entry.question:'
 function escapeHTML(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 
 // Local UI demonstration only. Not a payment, entitlement or fraud-resistant quota system.
-const DAILY_MAX=2,WELCOME_MAX=5,DEMO_KEY='lumiQuotaPreviewV1';
+const DAILY_MAX=2,WELCOME_MAX=20,DEMO_KEY='lumiQuotaPreviewV1';
 function todayLocal(){const d=new Date();return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-')}
 function quota(){let x={};try{x=JSON.parse(localStorage.getItem(DEMO_KEY)||'{}')||{}}catch(e){}if(x.day!==todayLocal()){x.day=todayLocal();x.dailyUsed=0}x.dailyUsed=Math.min(DAILY_MAX,Math.max(0,Number(x.dailyUsed)||0));x.welcomeUsed=Math.min(WELCOME_MAX,Math.max(0,Number(x.welcomeUsed)||0));return x}
 function saveQuota(x){try{localStorage.setItem(DEMO_KEY,JSON.stringify(x))}catch(e){}}
