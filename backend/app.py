@@ -104,7 +104,7 @@ def health():
 
 @app.get("/gigachat/status")
 def gigachat_status():
-    return jsonify(configured=bool(os.environ.get("GIGACHAT_AUTH_KEY")), scope_configured=bool(os.environ.get("GIGACHAT_SCOPE")), public_ai_enabled=False)
+    return jsonify(configured=bool(os.environ.get("GIGACHAT_AUTH_KEY")), scope_configured=bool(os.environ.get("GIGACHAT_SCOPE")), public_ai_enabled=True)
 
 @app.post("/internal/test-gigachat")
 def private_test():
@@ -128,22 +128,11 @@ def private_test():
         answer = result["choices"][0]["message"]["content"]
         return jsonify(ok=True, answer=answer)
     except (RuntimeError, KeyError, IndexError, TypeError, ValueError) as exc:
-        message = str(exc)
-        app.logger.warning("Private GigaChat test failed: %s", message)
-        return jsonify(ok=False, error=message), 502
+        app.logger.warning("Private GigaChat test failed; error_type=%s", type(exc).__name__)
+        return jsonify(ok=False, error="GigaChat test failed"), 502
 
-import hashlib
-# import threading
-# from datetime import datetime, timezone
-# from flask import make_response
-
-# ADD BELOW THE EXISTING PRIVATE TEST ENDPOINT, BEFORE if __name__ == "__main__":
-
-# IMPORTANT: This temporary in-memory quota is for a single Gunicorn worker only.
-# It resets on service restart. Do not treat it as production billing protection.
-import hashlib
-import threading
-from datetime import datetime, timezone
+# IMPORTANT: Temporary in-memory quota for one Gunicorn worker.
+# Resets on service restart; not suitable for production billing protection.
 
 _QUOTA_LOCK = threading.Lock()
 _QUOTA = {}
@@ -315,7 +304,7 @@ def ai_reading():
             raise ValueError("Empty AI response")
         success = True
         return jsonify(ok=True, answer=answer.strip()) 
-   except (RuntimeError, ValueError, KeyError, IndexError, TypeError) as exc:
+    except (RuntimeError, ValueError, KeyError, IndexError, TypeError) as exc:
         app.logger.warning(
             "Public reading failed; error_type=%s",
             type(exc).__name__
