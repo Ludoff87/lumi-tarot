@@ -127,10 +127,30 @@ def _openrouter_chat(messages, max_tokens=1000, timeout=35):
     except (URLError, TimeoutError) as exc:
         app.logger.warning("OpenRouter network error: %s", type(exc).__name__)
         raise RuntimeError("OpenRouter connection failed") from None
-    answer = result["choices"][0]["message"]["content"]
+    
+    choices = result.get("choices") or []
+    if not choices:
+        app.logger.warning(
+            "OpenRouter: no choices; response_keys=%s",
+            list(result.keys())
+        )
+        raise ValueError("OpenRouter returned no choices")
+
+    message = choices[0].get("message") or {}
+    answer = message.get("content")
+
     if not isinstance(answer, str) or not answer.strip():
-        raise ValueError("OpenRouter returned an empty response")
+        app.logger.warning(
+            "OpenRouter: empty content; finish_reason=%s; "
+            "message_keys=%s; has_reasoning=%s",
+            choices[0].get("finish_reason"),
+            list(message.keys()),
+            bool(message.get("reasoning"))
+        )
+        raise ValueError("OpenRouter returned empty content")
+
     return answer.strip()
+
 
 
 def _require_admin():
