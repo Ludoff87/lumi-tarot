@@ -95,7 +95,7 @@ def _get_access_token():
     return _TOKEN
 
 
-def _openrouter_chat(messages, max_tokens=1000, timeout=35):
+def _openrouter_chat(messages, max_tokens=3000, timeout=60):
     """Call OpenRouter using the server-side key; do not expose secrets."""
     api_key = os.environ.get("OPENROUTER_API_KEY", "").strip()
     if not api_key:
