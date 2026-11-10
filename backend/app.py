@@ -360,7 +360,7 @@ def ai_reading():
         # One request per provider. Ask the model to reason about relationships
         # internally, then return only the four user-facing sections.
         
-    writing_system = (
+        writing_system = (
         "Ты — таролог Lumi Tarot. Пиши по-русски, обращайся на «ты». "
         "Таро — символический инструмент размышления, а не доказательство событий. "
         "Твоя задача — дать глубокое, понятное и персональное толкование, "
@@ -388,7 +388,7 @@ def ai_reading():
         "и не утверждай как факт чувства или намерения других людей. "
         "Общий объём ответа — примерно 200–260 слов. "
         "Не повторяй одинаковые мысли в разных разделах."
-    )
+        )
 
         answer = None
         for candidate in providers:
