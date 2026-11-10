@@ -1,4 +1,4 @@
-"""Lumi Tarot API — GigaChat primary, optional OpenRouter free model."""
+"""Lumi Tarot API — OpenRouter primary with GigaChat fallback."""
 import hashlib
 import hmac
 import json
@@ -187,7 +187,7 @@ def ai_status():
 
 @app.get("/")
 def home():
-    return jsonify(service="Lumi Tarot API", status="running", version="0.7")
+    return jsonify(service="Lumi Tarot API", status="running", version="0.8")
 
 @app.get("/health")
 def health():
@@ -378,26 +378,40 @@ def ai_reading():
                         f"Тип расклада: {mode}. Вопрос пользователя (учти дословно): «{question.strip() or 'не задан'}».\n" + "\n".join(validated)
                     )},
                 ]
-        provider = os.environ.get("LUMI_AI_PROVIDER", "gigachat").lower().strip()
-        if provider == "openrouter":
-            answer = _openrouter_chat(messages, max_tokens=1000)
-        else:
-            token = _get_access_token()
-            result = _json_request(
-                "https://gigachat.devices.sberbank.ru/api/v1/chat/completions",
-                {
-                    "model": os.environ.get("GIGACHAT_MODEL", "GigaChat"),
-                    "messages": messages,
-                    "max_tokens": 650,
-                    "temperature": 0.7,
-                },
-                {"Authorization": "Bearer " + token,
-                 "Content-Type": "application/json", "Accept": "application/json"},
-                timeout=35,
-            )
-            answer = result["choices"][0]["message"]["content"]
-        if not isinstance(answer, str) or not answer.strip():
-            raise ValueError("Empty AI response")
+        provider = os.environ.get("LUMI_AI_PROVIDER", "openrouter").lower().strip()
+        if provider not in ("openrouter", "gigachat"):
+            provider = "openrouter"
+        providers = ("openrouter", "gigachat") if provider == "openrouter" else ("gigachat", "openrouter")
+        answer = None
+        for candidate in providers:
+            try:
+                if candidate == "openrouter":
+                    candidate_answer = _openrouter_chat(messages, max_tokens=1000)
+                else:
+                    token = _get_access_token()
+                    result = _json_request(
+                        "https://gigachat.devices.sberbank.ru/api/v1/chat/completions",
+                        {
+                            "model": os.environ.get("GIGACHAT_MODEL", "GigaChat"),
+                            "messages": messages,
+                            "max_tokens": 650,
+                            "temperature": 0.7,
+                        },
+                        {"Authorization": "Bearer " + token,
+                         "Content-Type": "application/json", "Accept": "application/json"},
+                        timeout=35,
+                    )
+                    candidate_answer = result["choices"][0]["message"]["content"]
+                if not isinstance(candidate_answer, str) or not candidate_answer.strip():
+                    raise ValueError("Empty AI response")
+                answer = candidate_answer.strip()
+                app.logger.info("Reading completed with provider=%s", candidate)
+                break
+            except (RuntimeError, ValueError, KeyError, IndexError, TypeError, OSError) as exc:
+                # Never log API keys, raw requests, Telegram initData or private prompts.
+                app.logger.warning("Reading provider failed; provider=%s; error_type=%s", candidate, type(exc).__name__)
+        if answer is None:
+            raise RuntimeError("All AI providers failed")
         success = True
         return jsonify(ok=True, answer=answer.strip()) 
     except (RuntimeError, ValueError, KeyError, IndexError, TypeError) as exc:
