@@ -378,5 +378,26 @@ f"Вопрос пользователя: {question.strip() or 'не задан'}
                     state["welcome_used"] += 1
 
 
+
+@app.route("/internal/test-deepseek", methods=["POST"])
+def test_deepseek():
+    expected = os.environ.get("LUMI_ADMIN_TEST_TOKEN", "")
+    provided = request.headers.get("X-Lumi-Admin-Token", "")
+
+    if not expected or not hmac.compare_digest(provided, expected):
+        return jsonify(ok=False, error="Unauthorized"), 401
+
+    try:
+        answer = _deepseek_chat([
+            {"role": "user", "content": "Ответь одним словом: привет"}
+        ])
+        return jsonify(ok=True, answer=answer)
+    except HTTPError as exc:
+        app.logger.warning("DeepSeek HTTP error: %s", exc.code)
+        return jsonify(ok=False, error="DeepSeek HTTP error", status=exc.code), 502
+    except (URLError, TimeoutError, RuntimeError, ValueError, KeyError, IndexError, TypeError) as exc:
+        app.logger.warning("DeepSeek test error: %s", type(exc).__name__)
+        return jsonify(ok=False, error="DeepSeek request failed"), 502
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", "10000")))
