@@ -61,6 +61,41 @@ def _json_request(url, payload, headers, timeout=15):
     except (URLError, TimeoutError) as exc:
         raise RuntimeError("GigaChat API connection failed: " + _network_error_category(exc)) from None
 
+def _deepseek_chat(messages):
+    api_key = os.environ.get("DEEPSEEK_API_KEY", "").strip()
+    if not api_key:
+        raise RuntimeError("DeepSeek API key is not configured")
+
+    payload = {
+        "model": "deepseek-chat",
+        "messages": messages,
+        "max_tokens": 1000,
+        "temperature": 0.7,
+        "stream": False,
+    }
+
+    data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+
+    req = Request(
+        "https://api.deepseek.com/chat/completions",
+        data=data,
+        headers={
+            "Authorization": "Bearer " + api_key,
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        },
+        method="POST",
+    )
+
+    with urlopen(req, timeout=45) as response:
+        result = json.load(response)
+
+    answer = result["choices"][0]["message"]["content"]
+    if not isinstance(answer, str) or not answer.strip():
+        raise ValueError("Empty DeepSeek response")
+
+    return answer.strip()
+
 def _get_access_token():
     global _TOKEN, _TOKEN_EXPIRES_AT
     if _TOKEN and time.time() < _TOKEN_EXPIRES_AT - 90:
