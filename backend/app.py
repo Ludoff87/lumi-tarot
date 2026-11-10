@@ -102,11 +102,12 @@ def _openrouter_chat(messages, max_tokens=3000, timeout=60):
         raise RuntimeError("OpenRouter API key is not configured")
     # Only the free router is allowed, even if someone changes environment settings.
     payload = {
-        "model": "openrouter/free",
+        "model": "google/gemma-4-31b-it:free",
         "messages": messages,
         "max_tokens": max_tokens,
         "temperature": 0.7,
         "stream": False,
+        "reasoning": {"effort": "none"},
     }
     req = Request(
         "https://openrouter.ai/api/v1/chat/completions",
